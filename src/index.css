@@ -64,3 +64,12 @@
 .hover-lift {
   @apply transition-transform duration-300 hover:-translate-y-1;
 }
+
+.preserve-3d {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.absolute {
+  backface-visibility: hidden;
+}
