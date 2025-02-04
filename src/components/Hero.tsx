@@ -1,5 +1,5 @@
 import { motion, useAnimation } from "framer-motion";
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import Particles from "react-tsparticles";
 import { loadSlim } from "tsparticles-slim";
 import type { Engine } from "tsparticles-engine";
@@ -19,24 +19,66 @@ export const Hero = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [rotation, setRotation] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
+  const lastMousePos = useRef({ x: 0, y: 0 });
   const controls = useAnimation();
 
-  // Handle mouse controls
-  const handleMouseDown = () => setIsDragging(true);
-  const handleMouseUp = () => setIsDragging(false);
+  // Handle mouse controls with improved orbit behavior
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    lastMousePos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isDragging) {
+      const deltaX = e.clientX - lastMousePos.current.x;
+      const deltaY = e.clientY - lastMousePos.current.y;
+      
       setRotation(prev => ({
-        x: prev.x + e.movementY * 0.5,
-        y: prev.y + e.movementX * 0.5
+        x: prev.x + deltaY * 0.5,
+        y: prev.y + deltaX * 0.5
       }));
+
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
     }
   };
 
-  // Handle zoom
+  // Handle zoom with momentum
   const handleWheel = (e: React.WheelEvent) => {
-    setScale(prev => Math.max(0.5, Math.min(2, prev - e.deltaY * 0.001)));
+    e.preventDefault();
+    const zoomSpeed = 0.001;
+    const newScale = Math.max(0.5, Math.min(2, scale - e.deltaY * zoomSpeed));
+    setScale(newScale);
   };
+
+  // Auto-rotation when not interacting
+  useEffect(() => {
+    let animationFrame: number;
+    let lastTime = performance.now();
+    
+    const animate = (currentTime: number) => {
+      const deltaTime = currentTime - lastTime;
+      lastTime = currentTime;
+      
+      if (!isDragging) {
+        setRotation(prev => ({
+          x: prev.x,
+          y: prev.y + (deltaTime * 0.01) // Gentle rotation speed
+        }));
+      }
+      
+      animationFrame = requestAnimationFrame(animate);
+    };
+    
+    animationFrame = requestAnimationFrame(animate);
+    
+    return () => {
+      cancelAnimationFrame(animationFrame);
+    };
+  }, [isDragging]);
 
   // Bass bump animation
   useEffect(() => {
@@ -133,6 +175,7 @@ export const Hero = () => {
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
       >
         <motion.div
@@ -141,6 +184,7 @@ export const Hero = () => {
           style={{
             transform: `scale(${scale}) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
             transformStyle: "preserve-3d",
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
           }}
         >
           {/* Cube Faces */}

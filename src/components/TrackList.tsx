@@ -23,26 +23,55 @@ export const TrackList = () => {
   const [tracks, setTracks] = useState<Track[]>(initialTracks);
   const { toast } = useToast();
 
+  const formatDuration = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Create a URL for the uploaded audio file
       const audioUrl = URL.createObjectURL(file);
+      const audio = new Audio(audioUrl);
       
-      // Create a new track with the uploaded file
-      const newTrack: Track = {
-        id: tracks.length + 1,
-        title: file.name.replace(/\.[^/.]+$/, ""), // Remove file extension
-        duration: "0:00", // You would need to calculate this from the actual audio file
-        isPremium: false,
-        audioUrl: audioUrl,
-      };
+      audio.addEventListener('loadedmetadata', () => {
+        const newTrack: Track = {
+          id: tracks.length + 1,
+          title: file.name.replace(/\.[^/.]+$/, ""),
+          duration: formatDuration(audio.duration),
+          isPremium: false,
+          audioUrl: audioUrl,
+        };
 
-      setTracks([...tracks, newTrack]);
-      
-      toast({
-        title: "Track uploaded",
-        description: `${newTrack.title} has been added to your playlist.`,
+        setTracks([...tracks, newTrack]);
+        
+        toast({
+          title: "Track uploaded",
+          description: `${newTrack.title} has been added to your playlist.`,
+        });
+      });
+
+      audio.addEventListener('error', () => {
+        toast({
+          title: "Upload failed",
+          description: "There was an error loading the audio file.",
+          variant: "destructive",
+        });
+      });
+    }
+  };
+
+  const handlePlayTrack = (track: Track) => {
+    if (track.audioUrl) {
+      const audio = new Audio(track.audioUrl);
+      audio.play().catch(error => {
+        console.error('Error playing audio:', error);
+        toast({
+          title: "Playback error",
+          description: "There was an error playing the track.",
+          variant: "destructive",
+        });
       });
     }
   };
@@ -91,6 +120,7 @@ export const TrackList = () => {
                     variant="ghost"
                     size="icon"
                     className="hover:scale-105 transition-transform"
+                    onClick={() => handlePlayTrack(track)}
                   >
                     <Play className="h-5 w-5" />
                   </Button>
