@@ -1,7 +1,7 @@
 import { motion, useAnimation } from "framer-motion";
 import { useCallback, useState, useEffect } from "react";
 import Particles from "react-tsparticles";
-import { loadFull } from "tsparticles-engine";
+import { loadFull } from "tsparticles";
 import type { Engine } from "tsparticles-engine";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
