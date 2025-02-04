@@ -1,10 +1,30 @@
 import { motion } from "framer-motion";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import Particles from "react-tsparticles";
 import { loadFull } from "tsparticles";
 import type { Engine } from "tsparticles-engine";
 
 export const Hero = () => {
+  const [faceImages, setFaceImages] = useState({
+    front: "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7",
+    back: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158",
+    right: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e",
+    left: "https://images.unsplash.com/photo-1500673922987-e212871fec22",
+    top: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5",
+    bottom: "/placeholder.svg"
+  });
+
+  const handleImageUpload = (face: keyof typeof faceImages) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      setFaceImages(prev => ({
+        ...prev,
+        [face]: imageUrl
+      }));
+    }
+  };
+
   const particlesInit = useCallback(async (engine: Engine) => {
     await loadFull(engine);
   }, []);
@@ -53,11 +73,23 @@ export const Hero = () => {
         className="absolute inset-0"
       />
 
+      {/* Upload Controls */}
+      <div className="glass-card p-4 mb-8 grid grid-cols-2 md:grid-cols-3 gap-4 max-w-2xl w-full mx-auto">
+        {Object.entries(faceImages).map(([face, url]) => (
+          <div key={face} className="flex flex-col items-center">
+            <label className="text-sm mb-2 capitalize">{face} Face</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload(face as keyof typeof faceImages)}
+              className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:bg-black/10 file:text-black hover:file:bg-black/20"
+            />
+          </div>
+        ))}
+      </div>
+
       {/* 3D Cube */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
         className="relative w-64 h-64 preserve-3d"
         animate={{
           rotateX: 360,
@@ -75,7 +107,7 @@ export const Hero = () => {
         {/* Front Face */}
         <div className="absolute w-full h-full" style={{ transform: "translateZ(32px)" }}>
           <img
-            src="https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7"
+            src={faceImages.front}
             alt="Front"
             className="w-full h-full object-cover rounded-lg"
           />
@@ -83,7 +115,7 @@ export const Hero = () => {
         {/* Back Face */}
         <div className="absolute w-full h-full" style={{ transform: "translateZ(-32px) rotateY(180deg)" }}>
           <img
-            src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158"
+            src={faceImages.back}
             alt="Back"
             className="w-full h-full object-cover rounded-lg"
           />
@@ -91,7 +123,7 @@ export const Hero = () => {
         {/* Right Face */}
         <div className="absolute w-full h-full" style={{ transform: "rotateY(90deg) translateZ(32px)" }}>
           <img
-            src="https://images.unsplash.com/photo-1485827404703-89b55fcc595e"
+            src={faceImages.right}
             alt="Right"
             className="w-full h-full object-cover rounded-lg"
           />
@@ -99,7 +131,7 @@ export const Hero = () => {
         {/* Left Face */}
         <div className="absolute w-full h-full" style={{ transform: "rotateY(-90deg) translateZ(32px)" }}>
           <img
-            src="https://images.unsplash.com/photo-1500673922987-e212871fec22"
+            src={faceImages.left}
             alt="Left"
             className="w-full h-full object-cover rounded-lg"
           />
@@ -107,7 +139,7 @@ export const Hero = () => {
         {/* Top Face */}
         <div className="absolute w-full h-full" style={{ transform: "rotateX(90deg) translateZ(32px)" }}>
           <img
-            src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5"
+            src={faceImages.top}
             alt="Top"
             className="w-full h-full object-cover rounded-lg"
           />
@@ -115,7 +147,7 @@ export const Hero = () => {
         {/* Bottom Face */}
         <div className="absolute w-full h-full" style={{ transform: "rotateX(-90deg) translateZ(32px)" }}>
           <img
-            src="/placeholder.svg"
+            src={faceImages.bottom}
             alt="Bottom"
             className="w-full h-full object-cover rounded-lg"
           />
