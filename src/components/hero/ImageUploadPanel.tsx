@@ -15,9 +15,31 @@ export const ImageUploadPanel = ({ faceImages, onImageUpload }: ImageUploadPanel
     
     files.slice(0, 6).forEach((file, index) => {
       if (faces[index]) {
+        // Create a new File array containing just this file
+        const fileList = new DataTransfer();
+        fileList.items.add(file);
+        
+        // Create a proper synthetic event
         const syntheticEvent = {
-          target: { files: [file] }
+          target: {
+            files: fileList.files,
+            value: '',
+            name: faces[index],
+          },
+          currentTarget: {
+            files: fileList.files,
+            value: '',
+            name: faces[index],
+          },
+          preventDefault: () => {},
+          stopPropagation: () => {},
+          nativeEvent: new Event('change'),
+          bubbles: true,
+          cancelable: true,
+          defaultPrevented: false,
+          type: 'change',
         } as React.ChangeEvent<HTMLInputElement>;
+        
         onImageUpload(faces[index], syntheticEvent);
       }
     });
