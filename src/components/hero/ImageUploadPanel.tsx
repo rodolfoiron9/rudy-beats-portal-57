@@ -1,5 +1,7 @@
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { Button } from "../ui/button";
+import { Upload } from "lucide-react";
 
 interface ImageUploadPanelProps {
   faceImages: Record<string, string>;
@@ -7,9 +9,44 @@ interface ImageUploadPanelProps {
 }
 
 export const ImageUploadPanel = ({ faceImages, onImageUpload }: ImageUploadPanelProps) => {
+  const handleBulkUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    const faces = Object.keys(faceImages);
+    
+    files.slice(0, 6).forEach((file, index) => {
+      if (faces[index]) {
+        const syntheticEvent = {
+          target: { files: [file] }
+        } as React.ChangeEvent<HTMLInputElement>;
+        onImageUpload(faces[index], syntheticEvent);
+      }
+    });
+  };
+
   return (
     <div className="glass-card p-6 mb-8 w-full max-w-2xl mx-auto">
-      <h3 className="text-lg font-semibold mb-4">Customize Cube Faces</h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">Customize Cube Faces</h3>
+        <div className="relative">
+          <input
+            id="bulk-upload"
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleBulkUpload}
+            className="hidden"
+          />
+          <label htmlFor="bulk-upload">
+            <Button
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              Upload All Faces
+            </Button>
+          </label>
+        </div>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {Object.entries(faceImages).map(([face]) => (
           <div key={face} className="space-y-2">

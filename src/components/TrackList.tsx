@@ -21,6 +21,7 @@ const initialTracks: Track[] = [
 
 export const TrackList = () => {
   const [tracks, setTracks] = useState<Track[]>(initialTracks);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<number | null>(null);
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -77,10 +78,18 @@ export const TrackList = () => {
         variant: "destructive",
       });
       
-      // Clean up the failed upload URL
       if (file) {
         URL.revokeObjectURL(URL.createObjectURL(file));
       }
+    }
+  };
+
+  const stopCurrentTrack = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+      setCurrentlyPlaying(null);
     }
   };
 
@@ -90,17 +99,20 @@ export const TrackList = () => {
         throw new Error('No audio URL available');
       }
 
-      // Stop current audio if playing
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
+      // Stop current track if playing
+      if (currentlyPlaying === track.id) {
+        stopCurrentTrack();
+        return;
       }
+
+      stopCurrentTrack();
 
       // Create and play new audio
       const audio = new Audio(track.audioUrl);
       audioRef.current = audio;
       
       await audio.play();
+      setCurrentlyPlaying(track.id);
       
       toast({
         title: "Now Playing",
@@ -109,7 +121,7 @@ export const TrackList = () => {
 
       // Handle audio completion
       audio.addEventListener('ended', () => {
-        audioRef.current = null;
+        stopCurrentTrack();
       });
     } catch (error) {
       console.error('Error playing audio:', error);
@@ -122,22 +134,16 @@ export const TrackList = () => {
   };
 
   // Cleanup function for audio resources
-  const cleanup = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    tracks.forEach(track => {
-      if (track.audioUrl?.startsWith('blob:')) {
-        URL.revokeObjectURL(track.audioUrl);
-      }
-    });
-  };
-
-  // Clean up on unmount
   useEffect(() => {
-    return cleanup;
-  }, []);
+    return () => {
+      stopCurrentTrack();
+      tracks.forEach(track => {
+        if (track.audioUrl?.startsWith('blob:')) {
+          URL.revokeObjectURL(track.audioUrl);
+        }
+      });
+    };
+  }, [tracks]);
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8">
@@ -182,7 +188,7 @@ export const TrackList = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="hover:scale-105 transition-transform"
+                    className={`hover:scale-105 transition-transform ${currentlyPlaying === track.id ? 'text-primary' : ''}`}
                     onClick={() => handlePlayTrack(track)}
                   >
                     <Play className="h-5 w-5" />
