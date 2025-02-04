@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Play, Download, Lock, Upload } from "lucide-react";
 import { Button } from "./ui/button";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Track {
@@ -22,6 +22,7 @@ const initialTracks: Track[] = [
 export const TrackList = () => {
   const [tracks, setTracks] = useState<Track[]>(initialTracks);
   const { toast } = useToast();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const formatDuration = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -29,52 +30,114 @@ export const TrackList = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAudioUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    try {
       const audioUrl = URL.createObjectURL(file);
-      const audio = new Audio(audioUrl);
       
-      audio.addEventListener('loadedmetadata', () => {
-        const newTrack: Track = {
-          id: tracks.length + 1,
-          title: file.name.replace(/\.[^/.]+$/, ""),
-          duration: formatDuration(audio.duration),
-          isPremium: false,
-          audioUrl: audioUrl,
-        };
-
-        setTracks([...tracks, newTrack]);
-        
-        toast({
-          title: "Track uploaded",
-          description: `${newTrack.title} has been added to your playlist.`,
+      // Create a promise to handle audio loading
+      const getDuration = () => {
+        return new Promise<number>((resolve, reject) => {
+          const audio = new Audio();
+          audio.src = audioUrl;
+          
+          audio.addEventListener('loadedmetadata', () => {
+            resolve(audio.duration);
+          });
+          
+          audio.addEventListener('error', (e) => {
+            reject(new Error(`Error loading audio: ${e}`));
+          });
         });
-      });
+      };
 
-      audio.addEventListener('error', () => {
-        toast({
-          title: "Upload failed",
-          description: "There was an error loading the audio file.",
-          variant: "destructive",
-        });
+      const duration = await getDuration();
+      
+      const newTrack: Track = {
+        id: tracks.length + 1,
+        title: file.name.replace(/\.[^/.]+$/, ""),
+        duration: formatDuration(duration),
+        isPremium: false,
+        audioUrl: audioUrl,
+      };
+
+      setTracks(prev => [...prev, newTrack]);
+      
+      toast({
+        title: "Track uploaded",
+        description: `${newTrack.title} has been added to your playlist.`,
       });
+    } catch (error) {
+      console.error('Error uploading audio:', error);
+      toast({
+        title: "Upload failed",
+        description: "There was an error loading the audio file.",
+        variant: "destructive",
+      });
+      
+      // Clean up the failed upload URL
+      if (file) {
+        URL.revokeObjectURL(URL.createObjectURL(file));
+      }
     }
   };
 
-  const handlePlayTrack = (track: Track) => {
-    if (track.audioUrl) {
+  const handlePlayTrack = async (track: Track) => {
+    try {
+      if (!track.audioUrl) {
+        throw new Error('No audio URL available');
+      }
+
+      // Stop current audio if playing
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+
+      // Create and play new audio
       const audio = new Audio(track.audioUrl);
-      audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-        toast({
-          title: "Playback error",
-          description: "There was an error playing the track.",
-          variant: "destructive",
-        });
+      audioRef.current = audio;
+      
+      await audio.play();
+      
+      toast({
+        title: "Now Playing",
+        description: track.title,
+      });
+
+      // Handle audio completion
+      audio.addEventListener('ended', () => {
+        audioRef.current = null;
+      });
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      toast({
+        title: "Playback error",
+        description: "There was an error playing the track.",
+        variant: "destructive",
       });
     }
   };
+
+  // Cleanup function for audio resources
+  const cleanup = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    tracks.forEach(track => {
+      if (track.audioUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(track.audioUrl);
+      }
+    });
+  };
+
+  // Clean up on unmount
+  useEffect(() => {
+    return cleanup;
+  }, []);
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8">
