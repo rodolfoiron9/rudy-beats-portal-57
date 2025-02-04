@@ -1,7 +1,7 @@
 import { motion, useAnimation } from "framer-motion";
 import { useCallback, useState, useEffect } from "react";
 import Particles from "react-tsparticles";
-import { loadFull } from "tsparticles";
+import { loadSlim } from "tsparticles-slim";
 import type { Engine } from "tsparticles-engine";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -61,7 +61,7 @@ export const Hero = () => {
   };
 
   const particlesInit = useCallback(async (engine: Engine) => {
-    await loadFull(engine);
+    await loadSlim(engine);
   }, []);
 
   return (
