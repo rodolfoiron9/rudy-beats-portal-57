@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Play, Download, Lock, Upload } from "lucide-react";
 import { Button } from "./ui/button";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Track {
