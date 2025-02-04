@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { AudioAnalyzer } from './AudioAnalyzer';
 
@@ -23,19 +23,44 @@ export const ThreeCube = ({ images, audioElement }: ThreeCubeProps) => {
   const isDraggingRef = useRef(false);
   const previousMousePositionRef = useRef({ x: 0, y: 0 });
   const analyzerRef = useRef<AudioAnalyzer>();
+  const textureLoaderRef = useRef(new THREE.TextureLoader());
+  const frameIdRef = useRef<number>();
+
+  // Memoize materials to prevent unnecessary texture reloads
+  const materials = useMemo(() => 
+    Object.values(images).map(url => 
+      new THREE.MeshPhongMaterial({
+        map: textureLoaderRef.current.load(url),
+        transparent: true,
+        opacity: 0.9
+      })
+    ),
+    [images]
+  );
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     // Scene setup
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      containerRef.current.clientWidth / containerRef.current.clientHeight,
+      0.1,
+      1000
+    );
+    
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance'
+    });
     
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio for better performance
     containerRef.current.appendChild(renderer.domElement);
 
-    // Lighting
+    // Lighting with optimized shadow settings
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
     
@@ -43,15 +68,9 @@ export const ThreeCube = ({ images, audioElement }: ThreeCubeProps) => {
     directionalLight.position.set(1, 1, 1);
     scene.add(directionalLight);
 
-    // Create cube
+    // Create cube with optimized geometry
     const geometry = new THREE.BoxGeometry(2, 2, 2);
-    const materials = Object.values(images).map(url => 
-      new THREE.MeshPhongMaterial({
-        map: new THREE.TextureLoader().load(url),
-        transparent: true,
-        opacity: 0.9
-      })
-    );
+    geometry.computeBoundingSphere(); // Precompute for better culling
     
     const cube = new THREE.Mesh(geometry, materials);
     scene.add(cube);
@@ -65,31 +84,28 @@ export const ThreeCube = ({ images, audioElement }: ThreeCubeProps) => {
     cubeRef.current = cube;
 
     // Audio analyzer setup
-    analyzerRef.current = new AudioAnalyzer();
-    if (audioElement) {
+    if (!analyzerRef.current) {
+      analyzerRef.current = new AudioAnalyzer();
+    }
+    
+    if (audioElement && analyzerRef.current) {
       analyzerRef.current.connectAudio(audioElement);
     }
 
-    // Animation loop
+    // Optimized animation loop with RAF cleanup
     const animate = () => {
-      requestAnimationFrame(animate);
+      frameIdRef.current = requestAnimationFrame(animate);
 
       if (!isDraggingRef.current && cubeRef.current) {
         cubeRef.current.rotation.y += 0.002;
       }
 
-      // Audio reactive animations
       if (analyzerRef.current && cubeRef.current) {
         const { bass, kick, snare } = analyzerRef.current.getFrequencyData();
         
-        // Scale based on bass
         const bassScale = 1 + (bass / 512) * 0.2;
         cubeRef.current.scale.setScalar(bassScale);
-
-        // Rotate based on kick
         cubeRef.current.rotation.x += (kick / 512) * 0.01;
-        
-        // Bounce based on snare
         cubeRef.current.position.y = (snare / 512) * 0.5;
       }
 
@@ -97,23 +113,59 @@ export const ThreeCube = ({ images, audioElement }: ThreeCubeProps) => {
     };
     animate();
 
+    // Optimized resize handler with debounce
+    let resizeTimeout: number;
+    const handleResize = () => {
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+      
+      resizeTimeout = window.setTimeout(() => {
+        if (containerRef.current && camera && renderer) {
+          const width = containerRef.current.clientWidth;
+          const height = containerRef.current.clientHeight;
+          
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+          renderer.setSize(width, height);
+        }
+      }, 100);
+    };
+
+    window.addEventListener('resize', handleResize);
+
     // Cleanup
     return () => {
-      renderer.dispose();
-      if (containerRef.current) {
+      if (frameIdRef.current) {
+        cancelAnimationFrame(frameIdRef.current);
+      }
+      
+      window.removeEventListener('resize', handleResize);
+      
+      if (geometry) geometry.dispose();
+      materials.forEach(material => material.dispose());
+      if (renderer) renderer.dispose();
+      
+      if (containerRef.current && renderer.domElement) {
         containerRef.current.removeChild(renderer.domElement);
       }
     };
-  }, [images]);
+  }, [materials]);
 
-  // Mouse controls
+  // Optimized mouse controls with throttling
   useEffect(() => {
+    let lastTime = 0;
+    const throttleInterval = 16; // ~60fps
+
     const handleMouseDown = (e: MouseEvent) => {
       isDraggingRef.current = true;
       previousMousePositionRef.current = { x: e.clientX, y: e.clientY };
     };
 
     const handleMouseMove = (e: MouseEvent) => {
+      const currentTime = Date.now();
+      if (currentTime - lastTime < throttleInterval) return;
+      
       if (!isDraggingRef.current || !cubeRef.current) return;
 
       const deltaMove = {
@@ -125,6 +177,7 @@ export const ThreeCube = ({ images, audioElement }: ThreeCubeProps) => {
       cubeRef.current.rotation.x += deltaMove.y * 0.005;
 
       previousMousePositionRef.current = { x: e.clientX, y: e.clientY };
+      lastTime = currentTime;
     };
 
     const handleMouseUp = () => {
@@ -134,10 +187,15 @@ export const ThreeCube = ({ images, audioElement }: ThreeCubeProps) => {
     const handleWheel = (e: WheelEvent) => {
       if (!cameraRef.current) return;
       
+      const currentTime = Date.now();
+      if (currentTime - lastTime < throttleInterval) return;
+      
       cameraRef.current.position.z = Math.max(
         3,
         Math.min(10, cameraRef.current.position.z + e.deltaY * 0.01)
       );
+      
+      lastTime = currentTime;
     };
 
     window.addEventListener('mousedown', handleMouseDown);
