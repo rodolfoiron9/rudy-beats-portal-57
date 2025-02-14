@@ -53,23 +53,23 @@ export const Hero = () => {
 
   return (
     <SidebarProvider>
-      <div className="relative min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full bg-gradient-to-b from-gray-50 to-white">
         <CubeSettingsPanel onSettingsChange={handleSettingsChange} />
         
-        <div className="flex-1 flex flex-col items-center justify-center overflow-hidden">
-          <ImageUploadPanel 
-            faceImages={faceImages}
-            onImageUpload={handleImageUpload}
-          />
+        <div className="flex-1 flex flex-col items-center justify-start pt-16 overflow-hidden">
+          <HeroTitle />
           
-          <div className="w-full max-w-2xl mx-auto">
+          <div className="w-full max-w-2xl mx-auto mt-8">
             <ThreeCube 
               images={faceImages}
               settings={cubeSettings}
             />
           </div>
 
-          <HeroTitle />
+          <ImageUploadPanel 
+            faceImages={faceImages}
+            onImageUpload={handleImageUpload}
+          />
         </div>
       </div>
     </SidebarProvider>

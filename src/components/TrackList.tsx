@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { TrackItem } from "./track/TrackItem";
@@ -62,7 +63,7 @@ export const TrackList = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="glass-card rounded-xl overflow-hidden"
+        className="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200"
       >
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
