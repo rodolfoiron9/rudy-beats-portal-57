@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { AudioAnalyzer } from './AudioAnalyzer';
@@ -11,15 +12,27 @@ interface ThreeCubeProps {
     top: string;
     bottom: string;
   };
+  settings: {
+    bassIntensity: number;
+    audioReactionEnabled: boolean;
+    zoomLevel: number;
+    pulseEnabled: boolean;
+    pulseIntensity: number;
+    bounceEnabled: boolean;
+    bounceIntensity: number;
+    edgesVisible: boolean;
+    edgeColor: string;
+  };
   audioElement?: HTMLAudioElement | null;
 }
 
-export const ThreeCube = ({ images, audioElement }: ThreeCubeProps) => {
+export const ThreeCube = ({ images, settings, audioElement }: ThreeCubeProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene>();
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const rendererRef = useRef<THREE.WebGLRenderer>();
   const cubeRef = useRef<THREE.Mesh>();
+  const edgesRef = useRef<THREE.LineSegments>();
   const isDraggingRef = useRef(false);
   const previousMousePositionRef = useRef({ x: 0, y: 0 });
   const analyzerRef = useRef<AudioAnalyzer>();
@@ -57,10 +70,10 @@ export const ThreeCube = ({ images, audioElement }: ThreeCubeProps) => {
     });
     
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio for better performance
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     containerRef.current.appendChild(renderer.domElement);
 
-    // Lighting with optimized shadow settings
+    // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
     
@@ -68,20 +81,27 @@ export const ThreeCube = ({ images, audioElement }: ThreeCubeProps) => {
     directionalLight.position.set(1, 1, 1);
     scene.add(directionalLight);
 
-    // Create cube with optimized geometry
+    // Create cube
     const geometry = new THREE.BoxGeometry(2, 2, 2);
-    geometry.computeBoundingSphere(); // Precompute for better culling
-    
     const cube = new THREE.Mesh(geometry, materials);
     scene.add(cube);
 
-    camera.position.z = 5;
+    // Create edges
+    const edges = new THREE.EdgesGeometry(geometry);
+    const edgesMaterial = new THREE.LineBasicMaterial({ 
+      color: settings.edgeColor 
+    });
+    const edgesLines = new THREE.LineSegments(edges, edgesMaterial);
+    cube.add(edgesLines);
+
+    camera.position.z = settings.zoomLevel;
 
     // Store refs
     sceneRef.current = scene;
     cameraRef.current = camera;
     rendererRef.current = renderer;
     cubeRef.current = cube;
+    edgesRef.current = edgesLines;
 
     // Audio analyzer setup
     if (!analyzerRef.current) {
@@ -92,7 +112,7 @@ export const ThreeCube = ({ images, audioElement }: ThreeCubeProps) => {
       analyzerRef.current.connectAudio(audioElement);
     }
 
-    // Optimized animation loop with RAF cleanup
+    // Animation loop
     const animate = () => {
       frameIdRef.current = requestAnimationFrame(animate);
 
@@ -100,20 +120,28 @@ export const ThreeCube = ({ images, audioElement }: ThreeCubeProps) => {
         cubeRef.current.rotation.y += 0.002;
       }
 
-      if (analyzerRef.current && cubeRef.current) {
+      if (settings.audioReactionEnabled && analyzerRef.current && cubeRef.current) {
         const { bass, kick, snare } = analyzerRef.current.getFrequencyData();
         
-        const bassScale = 1 + (bass / 512) * 0.2;
+        const bassScale = 1 + (bass / 512) * (settings.bassIntensity / 100) * 0.2;
         cubeRef.current.scale.setScalar(bassScale);
-        cubeRef.current.rotation.x += (kick / 512) * 0.01;
-        cubeRef.current.position.y = (snare / 512) * 0.5;
+
+        if (settings.bounceEnabled) {
+          const bounceAmount = (kick / 512) * (settings.bounceIntensity / 100);
+          cubeRef.current.position.y = Math.sin(Date.now() * 0.005) * bounceAmount;
+        }
+
+        if (settings.pulseEnabled) {
+          const pulseAmount = (snare / 512) * (settings.pulseIntensity / 100);
+          cubeRef.current.scale.addScalar(pulseAmount);
+        }
       }
 
       renderer.render(scene, camera);
     };
     animate();
 
-    // Optimized resize handler with debounce
+    // Handle resize
     let resizeTimeout: number;
     const handleResize = () => {
       if (resizeTimeout) {
@@ -150,12 +178,12 @@ export const ThreeCube = ({ images, audioElement }: ThreeCubeProps) => {
         containerRef.current.removeChild(renderer.domElement);
       }
     };
-  }, [materials]);
+  }, [materials, settings]);
 
-  // Optimized mouse controls with throttling
+  // Mouse controls
   useEffect(() => {
     let lastTime = 0;
-    const throttleInterval = 16; // ~60fps
+    const throttleInterval = 16;
 
     const handleMouseDown = (e: MouseEvent) => {
       isDraggingRef.current = true;
@@ -210,6 +238,21 @@ export const ThreeCube = ({ images, audioElement }: ThreeCubeProps) => {
       window.removeEventListener('wheel', handleWheel);
     };
   }, []);
+
+  // Update edges visibility and color
+  useEffect(() => {
+    if (edgesRef.current) {
+      edgesRef.current.visible = settings.edgesVisible;
+      (edgesRef.current.material as THREE.LineBasicMaterial).color.set(settings.edgeColor);
+    }
+  }, [settings.edgesVisible, settings.edgeColor]);
+
+  // Update camera zoom
+  useEffect(() => {
+    if (cameraRef.current) {
+      cameraRef.current.position.z = settings.zoomLevel;
+    }
+  }, [settings.zoomLevel]);
 
   return <div ref={containerRef} className="w-full h-[400px]" />;
 };

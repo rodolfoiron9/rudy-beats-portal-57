@@ -1,7 +1,9 @@
+
 import { useState, useCallback, memo } from "react";
 import { ThreeCube } from "./three/ThreeCube";
 import { ImageUploadPanel } from "./hero/ImageUploadPanel";
 import { HeroTitle } from "./hero/HeroTitle";
+import { CubeSettingsPanel } from "./cube/CubeSettingsPanel";
 
 const defaultImages = {
   front: "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7",
@@ -14,11 +16,21 @@ const defaultImages = {
 
 export const Hero = () => {
   const [faceImages, setFaceImages] = useState(defaultImages);
+  const [cubeSettings, setCubeSettings] = useState({
+    bassIntensity: 50,
+    audioReactionEnabled: true,
+    zoomLevel: 5,
+    pulseEnabled: false,
+    pulseIntensity: 50,
+    bounceEnabled: false,
+    bounceIntensity: 50,
+    edgesVisible: true,
+    edgeColor: "#ffffff",
+  });
 
   const handleImageUpload = useCallback((face: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Clean up old object URL if it exists
       if (faceImages[face as keyof typeof faceImages].startsWith('blob:')) {
         URL.revokeObjectURL(faceImages[face as keyof typeof faceImages]);
       }
@@ -32,17 +44,24 @@ export const Hero = () => {
   }, [faceImages]);
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
-      <ImageUploadPanel 
-        faceImages={faceImages}
-        onImageUpload={handleImageUpload}
-      />
+    <div className="relative min-h-screen flex">
+      <CubeSettingsPanel onSettingsChange={setCubeSettings} />
       
-      <div className="w-full max-w-2xl mx-auto">
-        <ThreeCube images={faceImages} />
-      </div>
+      <div className="flex-1 flex flex-col items-center justify-center overflow-hidden">
+        <ImageUploadPanel 
+          faceImages={faceImages}
+          onImageUpload={handleImageUpload}
+        />
+        
+        <div className="w-full max-w-2xl mx-auto">
+          <ThreeCube 
+            images={faceImages}
+            settings={cubeSettings}
+          />
+        </div>
 
-      <HeroTitle />
+        <HeroTitle />
+      </div>
     </div>
   );
 };
