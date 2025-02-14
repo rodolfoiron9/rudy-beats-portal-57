@@ -1,9 +1,10 @@
 
-import { useState, useCallback, memo } from "react";
+import { useState, useCallback } from "react";
 import { ThreeCube } from "./three/ThreeCube";
 import { ImageUploadPanel } from "./hero/ImageUploadPanel";
 import { HeroTitle } from "./hero/HeroTitle";
 import { CubeSettingsPanel } from "./cube/CubeSettingsPanel";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 const defaultImages = {
   front: "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7",
@@ -43,25 +44,34 @@ export const Hero = () => {
     }
   }, [faceImages]);
 
-  return (
-    <div className="relative min-h-screen flex">
-      <CubeSettingsPanel onSettingsChange={setCubeSettings} />
-      
-      <div className="flex-1 flex flex-col items-center justify-center overflow-hidden">
-        <ImageUploadPanel 
-          faceImages={faceImages}
-          onImageUpload={handleImageUpload}
-        />
-        
-        <div className="w-full max-w-2xl mx-auto">
-          <ThreeCube 
-            images={faceImages}
-            settings={cubeSettings}
-          />
-        </div>
+  const handleSettingsChange = (settings: Partial<typeof cubeSettings>) => {
+    setCubeSettings(prev => ({
+      ...prev,
+      ...settings
+    }));
+  };
 
-        <HeroTitle />
+  return (
+    <SidebarProvider>
+      <div className="relative min-h-screen flex w-full">
+        <CubeSettingsPanel onSettingsChange={handleSettingsChange} />
+        
+        <div className="flex-1 flex flex-col items-center justify-center overflow-hidden">
+          <ImageUploadPanel 
+            faceImages={faceImages}
+            onImageUpload={handleImageUpload}
+          />
+          
+          <div className="w-full max-w-2xl mx-auto">
+            <ThreeCube 
+              images={faceImages}
+              settings={cubeSettings}
+            />
+          </div>
+
+          <HeroTitle />
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
