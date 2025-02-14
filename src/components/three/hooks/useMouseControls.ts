@@ -1,12 +1,12 @@
 
-import { useEffect, RefObject } from 'react';
+import { useEffect, MutableRefObject } from 'react';
 import * as THREE from 'three';
 
 interface MouseControlsProps {
-  cubeRef: RefObject<THREE.Mesh>;
-  cameraRef: RefObject<THREE.PerspectiveCamera>;
-  isDraggingRef: RefObject<boolean>;
-  previousMousePositionRef: RefObject<{ x: number; y: number }>;
+  cubeRef: MutableRefObject<THREE.Mesh | undefined>;
+  cameraRef: MutableRefObject<THREE.PerspectiveCamera | undefined>;
+  isDraggingRef: MutableRefObject<boolean>;
+  previousMousePositionRef: MutableRefObject<{ x: number; y: number }>;
 }
 
 export const useMouseControls = ({
@@ -31,8 +31,8 @@ export const useMouseControls = ({
       if (!isDraggingRef.current || !cubeRef.current) return;
 
       const deltaMove = {
-        x: e.clientX - previousMousePositionRef.current!.x,
-        y: e.clientY - previousMousePositionRef.current!.y
+        x: e.clientX - previousMousePositionRef.current.x,
+        y: e.clientY - previousMousePositionRef.current.y
       };
 
       cubeRef.current.rotation.y += deltaMove.x * 0.005;

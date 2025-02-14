@@ -1,11 +1,11 @@
 
-import { useEffect, RefObject } from 'react';
+import { useEffect, MutableRefObject } from 'react';
 import * as THREE from 'three';
 import { AudioAnalyzer } from '../AudioAnalyzer';
 
 interface AudioAnimationProps {
-  cubeRef: RefObject<THREE.Mesh>;
-  analyzerRef: RefObject<AudioAnalyzer>;
+  cubeRef: MutableRefObject<THREE.Mesh | undefined>;
+  analyzerRef: MutableRefObject<AudioAnalyzer | undefined>;
   settings: {
     audioReactionEnabled: boolean;
     bassIntensity: number;
